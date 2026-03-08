@@ -2,6 +2,10 @@
 
 Rubin 桌面太阳时钟：显示 Rubin 台址真太阳时、太阳高度角与五级天光状态，并标注是否适合观测。
 
+内置站点：
+- Rubin (Cerro Pachon)
+- WFST (Lenghu)
+
 ## 运行要求
 
 - Windows 10/11

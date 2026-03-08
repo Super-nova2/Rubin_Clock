@@ -1,0 +1,19 @@
+{
+  "selected_site_id": "rubin_cerro_pachon",
+  "sites": [
+    {
+      "id": "rubin_cerro_pachon",
+      "name": "Rubin (Cerro Pachon)",
+      "lat": -30.2446,
+      "lon": -70.7494,
+      "elevation_m": 2663.0
+    },
+    {
+      "id": "wfst_lenghu",
+      "name": "WFST (Lenghu)",
+      "lat": 38.6068,
+      "lon": 93.8961,
+      "elevation_m": 4200.0
+    }
+  ]
+}

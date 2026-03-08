@@ -20,6 +20,16 @@ DEFAULT_SITE = Site(
     elevation_m=2663.0,
 )
 
+WFST_SITE = Site(
+    id="wfst_lenghu",
+    name="WFST (Lenghu)",
+    lat=38.6068,
+    lon=93.8961,
+    elevation_m=4200.0,
+)
+
+BUILTIN_SITES = [DEFAULT_SITE, WFST_SITE]
+
 
 @dataclass
 class AppConfig:
@@ -70,8 +80,17 @@ def _site_to_raw(site: Site) -> dict:
     }
 
 
+def _with_builtin_sites(sites: list[Site]) -> list[Site]:
+    by_id = {site.id: site for site in sites}
+    merged = list(sites)
+    for builtin in BUILTIN_SITES:
+        if builtin.id not in by_id:
+            merged.append(builtin)
+    return merged
+
+
 def _default_config() -> AppConfig:
-    return AppConfig(selected_site_id=DEFAULT_SITE.id, sites=[DEFAULT_SITE])
+    return AppConfig(selected_site_id=DEFAULT_SITE.id, sites=list(BUILTIN_SITES))
 
 
 def save_config(config: AppConfig) -> None:
@@ -95,10 +114,8 @@ def load_config() -> AppConfig:
         if not sites:
             sites = [DEFAULT_SITE]
 
+        sites = _with_builtin_sites(sites)
         ids = {site.id for site in sites}
-        if DEFAULT_SITE.id not in ids:
-            sites.append(DEFAULT_SITE)
-            ids.add(DEFAULT_SITE.id)
 
         selected = str(raw.get("selected_site_id", DEFAULT_SITE.id))
         if selected not in ids:
@@ -153,6 +170,8 @@ def set_selected_site(config: AppConfig, site_id: str) -> AppConfig:
 __all__ = [
     "CONFIG_PATH",
     "DEFAULT_SITE",
+    "WFST_SITE",
+    "BUILTIN_SITES",
     "AppConfig",
     "create_site_id",
     "ensure_unique_site_id",
