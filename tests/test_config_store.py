@@ -31,6 +31,7 @@ class ConfigStoreTests(unittest.TestCase):
             self.assertIn("rubin_cerro_pachon", site_ids)
             self.assertIn("wfst_lenghu", site_ids)
             self.assertEqual(config.selected_site_id, "rubin_cerro_pachon")
+            self.assertEqual(config.language, "zh")
         finally:
             if original_appdata is None:
                 os.environ.pop("APPDATA", None)
@@ -48,6 +49,7 @@ class ConfigStoreTests(unittest.TestCase):
             module.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
             payload = {
                 "selected_site_id": "rubin_cerro_pachon",
+                "language": "en",
                 "sites": [
                     {
                         "id": "rubin_cerro_pachon",
@@ -65,6 +67,7 @@ class ConfigStoreTests(unittest.TestCase):
 
             self.assertIn("rubin_cerro_pachon", site_ids)
             self.assertIn("wfst_lenghu", site_ids)
+            self.assertEqual(config.language, "en")
         finally:
             if original_appdata is None:
                 os.environ.pop("APPDATA", None)

@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = []
+datas = [('D:\\桌面\\Rubin_Timer\\assets\\app_icon.ico', 'assets'), ('D:\\桌面\\Rubin_Timer\\assets\\app_icon.png', 'assets')]
 binaries = []
 hiddenimports = ['pystray._win32']
 tmp_ret = collect_all('customtkinter')
@@ -42,4 +42,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['D:\\桌面\\Rubin_Timer\\assets\\app_icon.ico'],
 )

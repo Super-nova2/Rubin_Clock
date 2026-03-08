@@ -12,6 +12,9 @@ from .astro_core import Site
 CONFIG_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "RubinSolarClock"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 
+DEFAULT_LANGUAGE = "zh"
+SUPPORTED_LANGUAGES = ("zh", "en")
+
 DEFAULT_SITE = Site(
     id="rubin_cerro_pachon",
     name="Rubin (Cerro Pachon)",
@@ -35,6 +38,7 @@ BUILTIN_SITES = [DEFAULT_SITE, WFST_SITE]
 class AppConfig:
     selected_site_id: str
     sites: list[Site]
+    language: str = DEFAULT_LANGUAGE
 
     def selected_site(self) -> Site:
         for site in self.sites:
@@ -89,8 +93,18 @@ def _with_builtin_sites(sites: list[Site]) -> list[Site]:
     return merged
 
 
+def _normalize_language(raw_language: str | None) -> str:
+    if raw_language in SUPPORTED_LANGUAGES:
+        return raw_language
+    return DEFAULT_LANGUAGE
+
+
 def _default_config() -> AppConfig:
-    return AppConfig(selected_site_id=DEFAULT_SITE.id, sites=list(BUILTIN_SITES))
+    return AppConfig(
+        selected_site_id=DEFAULT_SITE.id,
+        sites=list(BUILTIN_SITES),
+        language=DEFAULT_LANGUAGE,
+    )
 
 
 def save_config(config: AppConfig) -> None:
@@ -98,6 +112,7 @@ def save_config(config: AppConfig) -> None:
     payload = {
         "selected_site_id": config.selected_site_id,
         "sites": [_site_to_raw(site) for site in config.sites],
+        "language": _normalize_language(config.language),
     }
     CONFIG_PATH.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -121,7 +136,9 @@ def load_config() -> AppConfig:
         if selected not in ids:
             selected = DEFAULT_SITE.id
 
-        config = AppConfig(selected_site_id=selected, sites=sites)
+        language = _normalize_language(raw.get("language"))
+
+        config = AppConfig(selected_site_id=selected, sites=sites, language=language)
         save_config(config)
         return config
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
@@ -153,7 +170,7 @@ def upsert_site(config: AppConfig, site: Site, select_after_insert: bool = False
     if selected_site_id not in {s.id for s in new_sites}:
         selected_site_id = DEFAULT_SITE.id if DEFAULT_SITE.id in {s.id for s in new_sites} else new_sites[0].id
 
-    updated = AppConfig(selected_site_id=selected_site_id, sites=new_sites)
+    updated = AppConfig(selected_site_id=selected_site_id, sites=new_sites, language=config.language)
     save_config(updated)
     return updated
 
@@ -162,13 +179,22 @@ def set_selected_site(config: AppConfig, site_id: str) -> AppConfig:
     if site_id not in {site.id for site in config.sites}:
         return config
 
-    updated = AppConfig(selected_site_id=site_id, sites=config.sites)
+    updated = AppConfig(selected_site_id=site_id, sites=config.sites, language=config.language)
+    save_config(updated)
+    return updated
+
+
+def set_language(config: AppConfig, language: str) -> AppConfig:
+    normalized = _normalize_language(language)
+    updated = AppConfig(selected_site_id=config.selected_site_id, sites=config.sites, language=normalized)
     save_config(updated)
     return updated
 
 
 __all__ = [
     "CONFIG_PATH",
+    "DEFAULT_LANGUAGE",
+    "SUPPORTED_LANGUAGES",
     "DEFAULT_SITE",
     "WFST_SITE",
     "BUILTIN_SITES",
@@ -178,5 +204,6 @@ __all__ = [
     "load_config",
     "save_config",
     "set_selected_site",
+    "set_language",
     "upsert_site",
 ]

@@ -19,6 +19,9 @@ $venvPath = Join-Path $root ".venv"
 $venvPython = Join-Path $venvPath "Scripts\python.exe"
 $pythonExe = "python"
 
+$iconIco = Join-Path $root "assets\app_icon.ico"
+$iconPng = Join-Path $root "assets\app_icon.png"
+
 if (-not (Test-Path $venvPath)) {
     try {
         Invoke-Step -Executable "python" -Arguments @("-m", "venv", $venvPath)
@@ -62,15 +65,27 @@ if (Test-Path $buildPath) {
     Remove-Item -Path $buildPath -Recurse -Force
 }
 
-Invoke-Step -Executable $pythonExe -Arguments @(
+$pyInstallerArgs = @(
     "-m", "PyInstaller",
     "--noconfirm",
     "--onefile",
     "--windowed",
     "--name", "RubinSolarClock",
     "--collect-all", "customtkinter",
-    "--hidden-import", "pystray._win32",
-    (Join-Path $root "main.py")
+    "--hidden-import", "pystray._win32"
 )
+
+if (Test-Path $iconIco) {
+    $pyInstallerArgs += @("--icon", $iconIco)
+    $pyInstallerArgs += @("--add-data", "$iconIco;assets")
+}
+
+if (Test-Path $iconPng) {
+    $pyInstallerArgs += @("--add-data", "$iconPng;assets")
+}
+
+$pyInstallerArgs += (Join-Path $root "main.py")
+
+Invoke-Step -Executable $pythonExe -Arguments $pyInstallerArgs
 
 Write-Host "Build finished. Output: $distPath\RubinSolarClock.exe"
