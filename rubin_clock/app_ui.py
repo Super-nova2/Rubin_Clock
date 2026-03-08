@@ -26,6 +26,9 @@ from .config_store import (
 RESIZE_MARGIN = 10
 MIN_WIDTH = 420
 MIN_HEIGHT = 300
+WINDOW_ALPHA = 0.96
+INTERACTION_ALPHA = 1.0
+GEOMETRY_COMMIT_INTERVAL_MS = 16
 
 if sys.platform == "win32":
     HWND_BOTTOM = 1
@@ -212,10 +215,12 @@ class RubinClockApp:
 
         self.transition_cache = None
         self.settings_window: ctk.CTkToplevel | None = None
-
         self._drag_origin: tuple[int, int] | None = None
         self._resize_edge: str | None = None
         self._resize_origin: tuple[int, int, int, int, int, int] | None = None
+        self._pending_geometry: str | None = None
+        self._geometry_commit_id: str | None = None
+        self._interaction_active = False
 
         self._icon: pystray.Icon | None = None
 
@@ -249,7 +254,7 @@ class RubinClockApp:
         self.root.geometry("560x380+120+120")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", False)
-        self.root.attributes("-alpha", 0.96)
+        self.root.attributes("-alpha", WINDOW_ALPHA)
         self.root.configure(fg_color="#020617")
 
         self.root.bind("<Motion>", self._on_pointer_motion, add="+")
@@ -436,11 +441,44 @@ class RubinClockApp:
             )
         except Exception:
             pass
-
     def _schedule_bottom_pin(self) -> None:
         self._pin_to_desktop_layer()
         if self.root.winfo_exists():
             self.root.after(1500, self._schedule_bottom_pin)
+
+    def _set_interaction_active(self, active: bool) -> None:
+        if self._interaction_active == active:
+            return
+
+        self._interaction_active = active
+        try:
+            self.root.attributes("-alpha", INTERACTION_ALPHA if active else WINDOW_ALPHA)
+        except Exception:
+            pass
+
+    def _queue_geometry(self, geometry: str) -> None:
+        self._pending_geometry = geometry
+        if self._geometry_commit_id is not None:
+            return
+        self._geometry_commit_id = self.root.after(GEOMETRY_COMMIT_INTERVAL_MS, self._flush_geometry)
+
+    def _flush_geometry(self) -> None:
+        self._geometry_commit_id = None
+        if self._pending_geometry is None or not self.root.winfo_exists():
+            return
+
+        geometry = self._pending_geometry
+        self._pending_geometry = None
+        self.root.geometry(geometry)
+
+    def _flush_geometry_now(self) -> None:
+        if self._geometry_commit_id is not None:
+            try:
+                self.root.after_cancel(self._geometry_commit_id)
+            except Exception:
+                pass
+            self._geometry_commit_id = None
+        self._flush_geometry()
 
     def _root_local_xy(self, event) -> tuple[int, int]:
         return (
@@ -498,6 +536,7 @@ class RubinClockApp:
             event.x_root,
             event.y_root,
         )
+        self._set_interaction_active(True)
         return "break"
 
     def _on_pointer_drag(self, event):
@@ -534,14 +573,15 @@ class RubinClockApp:
             new_h = proposed
             new_y = start_y + dy
 
-        self.root.geometry(f"{int(new_w)}x{int(new_h)}+{int(new_x)}+{int(new_y)}")
-        self._pin_to_desktop_layer()
+        self._queue_geometry(f"{int(new_w)}x{int(new_h)}+{int(new_x)}+{int(new_y)}")
         return "break"
 
     def _on_pointer_up(self, event):
+        self._flush_geometry_now()
         self._resize_edge = None
         self._resize_origin = None
         self._drag_origin = None
+        self._set_interaction_active(False)
         self._on_pointer_motion(event)
         self._pin_to_desktop_layer()
         return None
@@ -555,6 +595,7 @@ class RubinClockApp:
             return
 
         self._drag_origin = (event.x_root - self.root.winfo_x(), event.y_root - self.root.winfo_y())
+        self._set_interaction_active(True)
 
     def _on_drag_move(self, event) -> None:
         if self._resize_edge is not None or self._drag_origin is None:
@@ -562,8 +603,7 @@ class RubinClockApp:
 
         x = event.x_root - self._drag_origin[0]
         y = event.y_root - self._drag_origin[1]
-        self.root.geometry(f"+{x}+{y}")
-        self._pin_to_desktop_layer()
+        self._queue_geometry(f"+{x}+{y}")
 
     def _tick(self) -> None:
         now_utc = datetime.now(timezone.utc)
