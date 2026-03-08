@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import ctypes
 import sys
 import threading
 from datetime import datetime, timezone
@@ -25,6 +26,15 @@ from .config_store import (
 RESIZE_MARGIN = 10
 MIN_WIDTH = 420
 MIN_HEIGHT = 300
+
+if sys.platform == "win32":
+    HWND_BOTTOM = 1
+    SWP_NOSIZE = 0x0001
+    SWP_NOMOVE = 0x0002
+    SWP_NOACTIVATE = 0x0010
+    SWP_NOOWNERZORDER = 0x0200
+    SWP_ASYNCWINDOWPOS = 0x4000
+    BOTTOM_FLAGS = SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_ASYNCWINDOWPOS
 
 RESIZE_CURSOR = {
     "n": "size_ns",
@@ -217,6 +227,8 @@ class RubinClockApp:
         self._apply_window_icon()
         self._build_widgets()
         self._start_tray_icon()
+        self.root.after(120, self._pin_to_desktop_layer)
+        self.root.after(1500, self._schedule_bottom_pin)
         self._tick()
 
     def _lang(self) -> str:
@@ -236,7 +248,7 @@ class RubinClockApp:
         self.root.title(self._t("app_title"))
         self.root.geometry("560x380+120+120")
         self.root.overrideredirect(True)
-        self.root.attributes("-topmost", True)
+        self.root.attributes("-topmost", False)
         self.root.attributes("-alpha", 0.96)
         self.root.configure(fg_color="#020617")
 
@@ -408,6 +420,28 @@ class RubinClockApp:
         if self._icon is not None:
             self._icon.title = self._t("tray_title")
 
+    def _pin_to_desktop_layer(self) -> None:
+        if sys.platform != "win32" or not self.root.winfo_exists() or not self.root.winfo_viewable():
+            return
+
+        try:
+            ctypes.windll.user32.SetWindowPos(
+                int(self.root.winfo_id()),
+                HWND_BOTTOM,
+                0,
+                0,
+                0,
+                0,
+                BOTTOM_FLAGS,
+            )
+        except Exception:
+            pass
+
+    def _schedule_bottom_pin(self) -> None:
+        self._pin_to_desktop_layer()
+        if self.root.winfo_exists():
+            self.root.after(1500, self._schedule_bottom_pin)
+
     def _root_local_xy(self, event) -> tuple[int, int]:
         return (
             event.x_root - self.root.winfo_rootx(),
@@ -501,6 +535,7 @@ class RubinClockApp:
             new_y = start_y + dy
 
         self.root.geometry(f"{int(new_w)}x{int(new_h)}+{int(new_x)}+{int(new_y)}")
+        self._pin_to_desktop_layer()
         return "break"
 
     def _on_pointer_up(self, event):
@@ -508,6 +543,7 @@ class RubinClockApp:
         self._resize_origin = None
         self._drag_origin = None
         self._on_pointer_motion(event)
+        self._pin_to_desktop_layer()
         return None
 
     def _on_drag_start(self, event) -> None:
@@ -527,6 +563,7 @@ class RubinClockApp:
         x = event.x_root - self._drag_origin[0]
         y = event.y_root - self._drag_origin[1]
         self.root.geometry(f"+{x}+{y}")
+        self._pin_to_desktop_layer()
 
     def _tick(self) -> None:
         now_utc = datetime.now(timezone.utc)
@@ -691,7 +728,7 @@ class RubinClockApp:
 
     def show_window(self) -> None:
         self.root.deiconify()
-        self.root.lift()
+        self._pin_to_desktop_layer()
 
     def hide_window(self) -> None:
         self.root.withdraw()
