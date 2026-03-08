@@ -176,14 +176,26 @@ class RubinClockApp:
         self._icon.menu = self._build_tray_menu()
         self._icon.update_menu()
 
+    def _site_switch_action(self, site_id: str) -> Callable:
+        def _action(icon, item) -> None:
+            self._run_on_ui_thread(self._switch_site, site_id)
+
+        return _action
+
+    def _site_checked_action(self, site_id: str) -> Callable:
+        def _checked(item) -> bool:
+            return self.current_site.id == site_id
+
+        return _checked
+
     def _build_tray_menu(self) -> pystray.Menu:
         site_items: list[pystray.MenuItem] = []
         for site in self.config.sites:
             site_items.append(
                 pystray.MenuItem(
                     site.name,
-                    lambda icon, item, site_id=site.id: self._run_on_ui_thread(self._switch_site, site_id),
-                    checked=lambda item, site_id=site.id: self.current_site.id == site_id,
+                    self._site_switch_action(site.id),
+                    checked=self._site_checked_action(site.id),
                     radio=True,
                 )
             )
@@ -342,4 +354,5 @@ class RubinClockApp:
 
 
 __all__ = ["RubinClockApp"]
+
 
