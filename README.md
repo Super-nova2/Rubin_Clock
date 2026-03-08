@@ -1,5 +1,7 @@
 ﻿# Rubin Solar Clock (Windows)
 
+## 中文说明
+
 Rubin 桌面太阳时钟：显示 Rubin 台址真太阳时、当地日期、太阳高度角与五级天光状态，并标注是否适合观测。
 
 内置站点：
@@ -34,6 +36,49 @@ python main.py
 构建产物位于 `dist\RubinSolarClock.exe`。
 
 ## 测试
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+---
+
+## English
+
+Rubin Solar Clock is a Windows desktop app that shows Rubin site local apparent solar time, local date, solar altitude, and a five-level sky-light state, with a quick observing suitability indicator.
+
+Built-in sites:
+- Rubin (Cerro Pachon)
+- WFST (Lenghu)
+
+Features:
+- Borderless floating window with edge drag-resize
+- Bilingual UI switch (Chinese / English) for window, tray, and settings
+- System tray resident mode with quick site switching
+
+## Requirements
+
+- Windows 10/11
+- Python 3.12+
+
+## Run From Source
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python main.py
+```
+
+## Build EXE
+
+```powershell
+.\build.ps1
+```
+
+Build output: `dist\RubinSolarClock.exe`
+
+## Tests
 
 ```powershell
 python -m unittest discover -s tests -v
